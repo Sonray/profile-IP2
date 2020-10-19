@@ -96,4 +96,38 @@ def search_user(request):
 
         return redirect('profile',username = searched_user)
 
+def edit_profile(request,username):
+    current_user = request.user
+    if request.method == 'POST':
+        form = ProfileForm(request.POST,request.FILES)
+        if form.is_valid():
+            bio = form.save(commit=False)
+            bio.user = current_user
+            bio.save()
+        return redirect('index')
+    elif Profile.objects.get(user=current_user):
+        profile = Profile.objects.get(user=current_user)
+        form = ProfileForm(instance=profile)
+    else:
+        form = ProfileForm()
+
+    return render(request,'edit_profile.html',{"form":form})
+
+def follow_user(request):
+    user_id = None
+    profile_id = None
+    data = {}
+
+    if request.method == 'GET':
+        user_id = request.GET['user_id']
+        profile_id = request.GET['profile_id']
+
+        user = User.objects.get(id = user_id)
+    if Profile.objects.filter(id=profile_id,followers = user).exists():
+        data['message'] = "You are already following this user."
+    else:
+        profile = Profile.objects.get(id=profile_id)
+        profile.followers.add(user)
+        data['message'] = "You are now following {}".format(profile.user.username)
+    return JsonResponse(data, safe=False)
 
