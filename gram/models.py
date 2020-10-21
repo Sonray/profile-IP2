@@ -1,77 +1,45 @@
 from django.db import models
 from django.contrib.auth.models import User
-from tinymce.models import HTMLField
 from pyuploadcare.dj.models import ImageField
 
 # Create your models here.
-class Profile(models.Model):
-    # profile_photo = models.ImageField(upload_to = 'profilepics/', default='Image')
-    prof_pic = ImageField(blank=True, manual_crop='800x800')
-    bio = HTMLField()
-    user = models.OneToOneField(User,on_delete=models.CASCADE, primary_key=True)
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE,)
+    profile_pic = ImageField(blank=False, upload_to = 'exchangergramMOMENT/')
+    bio = models.TextField(blank=True)
+    followers = models.ManyToManyField(User, related_name="followers", blank=True)
+    following = models.ManyToManyField(User, related_name="following", blank=True)
 
-    def save_profile(self):
+    def __str__(self):
+        return self.user.username
+
+
+class Post(models.Model):
+    image = models.ImageField(blank=False, upload_to = 'exchangergram/')
+    name = models.CharField(max_length=144, blank=True, default="Post")
+    caption = models.TextField(blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    likes = models.IntegerField(default=0)
+    profile = models.ForeignKey(User, on_delete=models.CASCADE,)
+    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE,)
+    
+    def __str__(self):
+        return f"{self.name} - {self.caption}"
+
+    def save_post(self):
         self.save()
-    
-    @classmethod
-    def search_profile(cls, name):
-        profile = Profile.objects.filter(user__username__icontains = name)
-        return profile
-    
-    @classmethod
-    def get_by_id(cls, id):
-        profile = Profile.objects.get(user = id)
-        return profile
 
-    @classmethod
-    def filter_by_id(cls, id):
-        profile = Profile.objects.filter(user = id).first()
-        return profile
+    def delete_post(self):
+        self.delete()
 
-class Image(models.Model):
-    # image_pic = models.ImageField(upload_to = 'p/', default='Image')
-    photo = ImageField(blank=True, manual_crop='800x800')
-    image_name = models.CharField(max_length = 50)
-    image_caption = HTMLField(blank=True)
-    post_date = models.DateTimeField(auto_now=True)
-    likes = models.BooleanField(default=False)
-    profile = models.ForeignKey(User, on_delete=models.CASCADE)
-
-    class Meta:
-        ordering = ('-post_date',)
-
-    def save_image(self):
+    def update_caption(self, new_cap):
+        self.caption = new_cap
         self.save()
-    
-    @classmethod
-    def update_caption(cls, update):
-        pass
-    
-    @classmethod
-    def get_image_id(cls, id):
-        image = Image.objects.get(pk=id)
-        return image
-    
-    @classmethod
-    def get_profile_images(cls, profile):
-        images = Image.objects.filter(profile__pk = profile)
-        return images
-    
-    @classmethod
-    def get_all_images(cls):
-        images = Image.objects.all()
-        return images
 
-class Comments(models.Model):
-    comment = HTMLField()
-    posted_on = models.DateTimeField(auto_now=True)
-    image = models.ForeignKey(Image, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+class Comment(models.Model):
+    comment = models.CharField(max_length=256)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE,)
 
-    def save_comment(self):
-        self.save()
-    
-    @classmethod
-    def get_comments_by_images(cls, id):
-        comments = Comments.objects.filter(image__pk = id)
-        return comments
+    def __str__(self):
+        return self.comment

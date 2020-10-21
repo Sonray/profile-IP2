@@ -1,124 +1,167 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
-from django.contrib.auth import login, authenticate
-from django.contrib.sites.shortcuts import get_current_site
-from django.utils.encoding import force_bytes, force_text
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.template.loader import render_to_string
-from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from .forms import SignupForm, ImageForm, ProfileForm, CommentForm
-from .emails import send_activation_email
-from .tokens import account_activation_token
-from .models import Image, Profile, Comments
+from .models import Post, User, UserProfile, Comment
+from .forms import UserForm, UserProfileForm, CommentForm, PostForm
+
 
 # Create your views here.
-@login_required(login_url='/')
-def home(request):
-    images = Image.get_all_images()
+@login_required
+def index(request):
+    current_user = request.user
+    current_profile = UserProfile.objects.get(id = current_user.id)
+    posts = Post.objects.all()[::-1]
+    comments = Comment.objects.all()
+
+    if request.method == "POST":
+        post_form = PostForm(request.POST)
+
+        if post_form.is_valid():
+            post = post_form.save(commit=False)
+
+            post.profile = current_user
+            post.user_profile = current_profile
+
+            post.save()
+            post_form = PostForm()
+            return HttpResponseRedirect(reverse("index"))
+
+    else:
+        post_form = PostForm()
+
     
-    return render(request, 'index.html', {'images':images})
 
-def signup(request):
-    if request.user.is_authenticated():
-        return redirect('home')
-    else:
-        if request.method == 'POST':
-            form = SignupForm(request.POST)
-            if form.is_valid():
-                user = form.save(commit=False)
-                user.is_active = False
-                user.save()
-                current_site = get_current_site(request)
-                to_email = form.cleaned_data.get('email')
-                send_activation_email(user, current_site, to_email)
-                return HttpResponse('Confirm your email address to complete registration')
-        else:
-            form = SignupForm()
-            return render(request, 'registration/signup.html',{'form':form})
+    return render(request, "instagrm/index.html", context={"posts":posts, "current_user":current_user,
+    "current_profile":current_profile, "post_form":post_form, "comments":comments,})
 
-def activate(request, uidb64, token):
-    try:
-        uid = force_text(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        user = None
+def post(request, id):
+    post = Post.objects.get(id = id)
+    comments = Comment.objects.filter(post__id=id)
+    current_user = request.user
+    current_profile = UserProfile.objects.get(id = current_user.id)
 
-    if user is not None and account_activation_token.check_token(user, token):
-        user.is_active = True
-        user.save()
-        login(request, user)
-        # return redirect('home')
-        return HttpResponse('Thank you for confirming email. Now login to your account')
-    else:
-        return HttpResponse('Activation link is invalid')
-    
-def profile(request, username):
-    profile = User.objects.get(username=username)
-    # print(profile.id)
-    try:
-        profile_details = Profile.get_by_id(profile.id)
-    except:
-        profile_details = Profile.filter_by_id(profile.id)
-    images = Image.get_profile_images(profile.id)
-    title = f'@{profile.username} Instagram photos and videos'
+    if request.method == "POST":
+        comment_form = CommentForm(request.POST)
 
-    return render(request, 'profile/profile.html', {'title':title, 'profile':profile, 'profile_details':profile_details, 'images':images})
-
-@login_required(login_url='/accounts/login')
-def upload_image(request):
-    if request.method == 'POST':
-        form = ImageForm(request.POST, request.FILES)
-        if form.is_valid():
-            upload = form.save(commit=False)
-            upload.profile = request.user
-            # print(f'image is {upload.image}')
-            upload.save()
-            return redirect('profile', username=request.user)
-    else:
-        form = ImageForm()
-    
-    return render(request, 'profile/upload_image.html', {'form':form})
-
-@login_required(login_url='/accounts/login')
-def edit_profile(request):
-    if request.method == 'POST':
-        form = ProfileForm(request.POST, request.FILES)
-        if form.is_valid():
-            edit = form.save(commit=False)
-            edit.user = request.user
-            edit.save()
-            return redirect('edit_profile')
-    else:
-        form = ProfileForm()
-
-    return render(request, 'profile/edit_profile.html', {'form':form})
-
-@login_required(login_url='/accounts/login')
-def single_image(request, image_id):
-    image = Image.get_image_id(image_id)
-    comments = Comments.get_comments_by_images(image_id)
-
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.image = image
-            comment.user = request.user
+        if comment_form.is_valid():
+            comment = comment_form.save(commit=False)
+            comment.user = current_user
+            comment.post = post
             comment.save()
-            return redirect('single_image', image_id=image_id)
-    else:
-        form = CommentForm()
-        
-    return render(request, 'image.html', {'image':image, 'form':form, 'comments':comments})
+            comment_form = CommentForm()
+            return redirect("post", post.id)
 
+    else:
+        comment_form = CommentForm()
+
+    return render(request, "instagrm/post.html", context={"post":post, "current_user":current_user,
+    "current_profile":current_profile, "comment_form":comment_form, "comments":comments,})
+
+
+def like(request, id):
+    post = Post.objects.get(id = id)
+    post.likes += 1
+    post.save()
+    return HttpResponseRedirect(reverse("index"))
+
+
+def like_post(request, id):
+    post = Post.objects.get(id = id)
+    post.likes += 1
+    post.save()
+    return redirect("post", post.id)
+
+
+@login_required
 def search(request):
-    if 'search' in request.GET and request.GET['search']:
-        search_term = request.GET.get('search')
-        profiles = Profile.search_profile(search_term)
-        message = f'{search_term}'
-
-        return render(request, 'search.html',{'message':message, 'profiles':profiles})
+    
+    if request.method == "GET":
+        search_term = request.GET.get("search")
+        searched_user = User.objects.get(username = search_term)
+        try:
+            searched_profile = UserProfile.objects.get(id = searched_user.id)
+            posts = Post.objects.filter(profile__id=searched_user.id)[::-1]
+            message = "{}".format(search_term)
+        except DoesNotExist:
+            return HttpResponseRedirect(reverse("index"))
+        
+        return render(request, "instagrm/search_results.html", context={"message":message, "users":searched_user,
+        "profiles":searched_profile, "posts":posts})
     else:
-        message = 'Enter term to search'
-        return render(request, 'search.html', {'message':message})
+        message = "You have not searched for any photo"
+        return render(request, "instagrm/search_results.html", context={"message":message})
+
+
+
+@login_required
+def profile(request, id):
+    user = User.objects.get(id=id)
+    profile = UserProfile.objects.get(id=id)
+    posts = Post.objects.filter(profile__id=id)[::-1]
+    return render(request, "instagrm/profile.html", context={"user":user, "profile":profile, "posts":posts})
+
+def user_login(request):
+    
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+
+        user = authenticate(username=username, password=password)
+
+        if user:
+
+            if user.is_active:
+                login(request, user)
+
+                return HttpResponseRedirect(reverse("index"))
+            else:
+                return HttpResponseRedirect(reverse("user_login")) #raise error/ flash
+
+        else:
+            return HttpResponseRedirect(reverse("user_login")) #raise error/ flash
+    else:
+        return render(request, "auth/login.html", context={})
+
+
+@login_required
+def user_logout(request):
+    logout(request)
+    return HttpResponseRedirect(reverse("user_login"))
+
+
+def register(request):
+    registered = False
+
+    if request.method == "POST":
+        user_form = UserForm(request.POST)
+        profile_form = UserProfileForm(request.POST)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user = user_form.save()
+            user.set_password(user.password)
+            user.save()
+
+            profile = profile_form.save(commit=False)
+            profile.user = user
+
+            if 'profile_pic' in request.FILES:
+                profile.profile_pic = request.FILES['profile_pic']
+
+            profile.save()
+
+            registered = True
+
+            return HttpResponseRedirect(reverse("user_login"))
+
+        else:
+            pass
+
+    else:
+        user_form = UserForm()
+        profile_form = UserProfileForm()
+
+    return render(request, "auth/register.html", context={"user_form":user_form, 
+    "profile_form":profile_form, "registered":registered})
+        

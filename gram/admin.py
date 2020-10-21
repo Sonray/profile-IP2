@@ -1,7 +1,10 @@
 from django.contrib import admin
-from .models import Profile, Image,Comments
+from .models import Post, Comment, UserProfile
+
+class ProfileAdmin(admin.ModelAdmin):
+    filter_horizontal =("followers", "following",)
 
 # Register your models here.
-admin.site.register(Profile)
-admin.site.register(Image)
-admin.site.register(Comments)
+admin.site.register(Post)
+admin.site.register(Comment)
+admin.site.register(UserProfile, admin_class=ProfileAdmin)

@@ -1,30 +1,39 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Image, Profile, Comments
+from .models import UserProfile, Post, Comment
+from pyuploadcare.dj.forms import ImageField
 
-# from pyuploadcare.dj.forms import FileWidget
-# from pyuploadcare.dj.models import ImageField
-
-class SignupForm(UserCreationForm):
-    email = forms.EmailField(max_length=200, help_text = 'Required')
+class UserForm(forms.ModelForm):
+    first_name = forms.CharField(label=False, widget=forms.TextInput(attrs={"class":"form-control mb-3", "placeholder":"First Name"}))
+    last_name = forms.CharField(label=False, widget=forms.TextInput(attrs={"class":"form-control mb-3", "placeholder":"Last Name"}))
+    username = forms.CharField(label=False, widget=forms.TextInput(attrs={"class":"form-control mb-3", "placeholder":"Username"}))
+    email = forms.CharField(label=False, widget=forms.TextInput(attrs={"class":"form-control mb-3", "placeholder":"Email"}))
+    password = forms.CharField(label=False, widget=forms.PasswordInput(attrs={"class":"form-control mb-3", "placeholder":"Password"}))
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2')
+        fields = ("first_name", "last_name", "username", "email", "password",)
 
-class ImageForm(forms.ModelForm):
-    
+
+class UserProfileForm(forms.ModelForm):
     class Meta:
-        model = Image
-        exclude = ['likes', 'post_date', 'profile']
-    
-class ProfileForm(forms.ModelForm):
+        model = UserProfile
+        fields = ("profile_pic",)
+
+
+class PostForm(forms.ModelForm):
+    caption = forms.CharField(widget=forms.Textarea(attrs={"class":"form-control", 
+    "placeholder":"Caption...", "rows":"4"}))
+    image = ImageField(label='', manual_crop="1000x1000")
+
     class Meta:
-        model = Profile
-        exclude = ['user']
+        model = Post
+        fields = ("caption", "image",)
+
 
 class CommentForm(forms.ModelForm):
+    comment = forms.CharField(label=False, widget=forms.TextInput(attrs={"class":"form-control comment", "placeholder":"Add a comment..."}))
+
     class Meta:
-        model = Comments
-        exclude = ['image', 'user']
+        model = Comment
+        fields = ("comment",)

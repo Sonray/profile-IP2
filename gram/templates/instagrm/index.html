@@ -1,5 +1,4 @@
 {%extends "instagrm/base.html"%}
-{%load staticfiles%}
 {%load bootstrap4%}
 
 {%block content%}
@@ -18,7 +17,7 @@
             </p>
             <div class="collapse" id="collapseExample">
                 <div class="card card-body">
-                    <form action="{%url 'index'%}" method="POST">
+                    <form action="{%url 'index'%}" method="POST" enctype="multipart/form-data">
                         {%csrf_token%}
                         {{post_form.as_p}}
                         <button style="border: solid 2px #333; padding: 5px" type="submit"

@@ -2,9 +2,9 @@
 {% load bootstrap4 %}
 
 {%block content%}
-<form class="form-signin" method="POST">
+<form class="form-signin" method="POST" enctype="multipart/form-data">
     <h1 class="mb-4"><span id="insta"
-            style="padding-bottom: 20px;">Instagrm</span></h1>
+            style="padding-bottom: 20px;">Instagram</span></h1>
     {% if registered %}
     <h1 class="h6 mb-3 font-weight-normal text-muted">Thank you for signing up</h1>
     {%else%}
