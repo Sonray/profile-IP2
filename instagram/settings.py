@@ -11,9 +11,10 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
-import django_heroku
 import os
-from decouple import config, Csv
+import django_heroku
+import dj_database_url
+from decouple import config,Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -86,16 +87,30 @@ UPLOADCARE = {
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'insta',
-        'USER': 'moringa',
-        'PASSWORD': 'Sonray20202',
-        'HOST': 'localhost',
-        'PORT': '',
+if config('MODE')=="dev":
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'insta',
+            'USER': 'moringa',
+            'PASSWORD': 'Sonray20202',
+            'HOST': 'localhost',
+            'PORT': '',
+        }
     }
-}
+# production
+else:
+   DATABASES = {
+       'default': dj_database_url.config(
+           default=config('DATABASE_URL')
+       )
+   }
+
+db_from_env = dj_database_url.config(conn_max_age=500)
+DATABASES['default'].update(db_from_env)
+
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+
 
 
 # Password validation
