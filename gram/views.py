@@ -23,8 +23,10 @@ def index(request):
 
             post.profile = current_user
             post.user_profile = current_profile
+            the_post = Post(caption=post_form.caption, image=post_form.image)
 
             post.save()
+            the_post.save()
             post_form = PostForm()
             return HttpResponseRedirect(reverse("index"))
 

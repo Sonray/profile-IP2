@@ -1,11 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
-from pyuploadcare.dj.models import ImageField
 
 # Create your models here.
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE,)
-    profile_pic = ImageField(blank=False, upload_to = 'exchangergramMOMENT/')
+    profile_pic = models.ImageField(upload_to = 'exchangergramMOMENT/',blank=True)
     bio = models.TextField(blank=True)
     followers = models.ManyToManyField(User, related_name="followers", blank=True)
     following = models.ManyToManyField(User, related_name="following", blank=True)
